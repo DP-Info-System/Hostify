@@ -11,7 +11,6 @@ import { ShowHostifyActions } from "./servers/actions/show-dokploy-actions";
 import { ShowStorageActions } from "./servers/actions/show-storage-actions";
 import { ShowTraefikActions } from "./servers/actions/show-traefik-actions";
 import { ToggleDockerCleanup } from "./servers/actions/toggle-docker-cleanup";
-import { UpdateServer } from "./web-server/update-server";
 
 export const WebServer = () => {
 	const { data: webServerSettings } =
@@ -44,8 +43,6 @@ export const WebServer = () => {
 							<ShowHostifyActions />
 							<ShowTraefikActions />
 							<ShowStorageActions />
-
-							<UpdateServer />
 						</div>
 
 						<div className="flex items-center flex-wrap justify-between gap-4">
