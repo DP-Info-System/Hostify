@@ -2,7 +2,7 @@ name: Hostify Docker Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, canary]
   workflow_dispatch:
 
 permissions:
