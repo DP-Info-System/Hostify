@@ -16,16 +16,16 @@ detect_version() {
         echo "Detecting latest stable version from GitHub..." >&2
         
         # Try to get latest release from GitHub by following redirects
-        version=$(curl -fsSL -o /dev/null -w '%{url_effective}\n' \
-            https://github.com/DP-Info-System/Hostify/releases/latest 2>/dev/null | \
-            sed 's#.*/tag/##')
-        
-        # Fallback to latest tag if detection fails
-        if [ -z "$version" ]; then
-            echo "Warning: Could not detect latest version from GitHub, using fallback version latest" >&2
-            version="latest"
-        else
+        local detected_url=$(curl -fsSL -o /dev/null -w '%{url_effective}\n' \
+            https://github.com/DP-Info-System/Hostify/releases/latest 2>/dev/null)
+            
+        # If the URL contains '/tag/', we found a release
+        if [[ "$detected_url" == *"/tag/"* ]]; then
+            version=$(echo "$detected_url" | sed 's#.*/tag/##')
             echo "Latest stable version detected: $version" >&2
+        else
+            echo "Warning: No official releases found, falling back to 'canary' version" >&2
+            version="canary"
         fi
     fi
     
