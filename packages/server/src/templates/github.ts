@@ -17,6 +17,7 @@ export interface CompleteTemplate {
 			docs?: string;
 		};
 	};
+	
 	variables: {
 		[key: string]: string;
 	};
