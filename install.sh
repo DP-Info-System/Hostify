@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # Detect version from environment variable or detect latest stable from GitHub
-# Usage with curl (export first): export DOKPLOY_VERSION=canary && curl -sSL https://dokploy.com/install.sh | sh
-# Usage with curl (export first): export DOKPLOY_VERSION=latest && curl -sSL https://dokploy.com/install.sh | sh
-# Usage with curl (bash -s): DOKPLOY_VERSION=canary bash -s < <(curl -sSL https://dokploy.com/install.sh)
-# Usage with curl (default): curl -sSL https://dokploy.com/install.sh | sh (detects latest stable version)
-# Usage with bash: DOKPLOY_VERSION=canary bash install.sh
-# Usage with bash: DOKPLOY_VERSION=latest bash install.sh
+# Usage with curl (export first): export HOSTIFY_VERSION=canary && curl -sSL https://raw.githubusercontent.com/DP-Info-System/Hostify/canary/install.sh | sh
+# Usage with curl (export first): export HOSTIFY_VERSION=latest && curl -sSL https://raw.githubusercontent.com/DP-Info-System/Hostify/canary/install.sh | sh
+# Usage with curl (bash -s): HOSTIFY_VERSION=canary bash -s < <(curl -sSL https://raw.githubusercontent.com/DP-Info-System/Hostify/canary/install.sh)
+# Usage with curl (default): curl -sSL https://raw.githubusercontent.com/DP-Info-System/Hostify/canary/install.sh | sh (detects latest stable version)
+# Usage with bash: HOSTIFY_VERSION=canary bash install.sh
+# Usage with bash: HOSTIFY_VERSION=latest bash install.sh
 # Usage with bash: bash install.sh (detects latest stable version)
 detect_version() {
-    local version="${DOKPLOY_VERSION}"
+    local version="${HOSTIFY_VERSION}"
     
     # If no version specified, get latest stable version from GitHub releases
     if [ -z "$version" ]; then
@@ -78,12 +78,12 @@ generate_random_password() {
     echo "$password"
 }
 
-install_dokploy() {
+install_hostify() {
     # Detect version tag
     VERSION_TAG=$(detect_version)
     DOCKER_IMAGE="ghcr.io/dp-info-system/hostify:${VERSION_TAG}"
     
-    echo "Installing Dokploy version: ${VERSION_TAG}"
+    echo "Installing Hostify version: ${VERSION_TAG}"
     if [ "$(id -u)" != "0" ]; then
         echo "This script must be run as root" >&2
         exit 1
@@ -116,7 +116,7 @@ install_dokploy() {
     # check if something is running on port 3000
     if ss -tulnp | grep ':3000 ' >/dev/null; then
         echo "Error: something is already running on port 3000" >&2
-        echo "Dokploy requires port 3000 to be available. Please stop any service using this port." >&2
+        echo "Hostify requires port 3000 to be available. Please stop any service using this port." >&2
         exit 1
     fi
 
@@ -221,40 +221,40 @@ install_dokploy() {
 
     echo "Swarm initialized"
 
-    docker network rm -f dokploy-network 2>/dev/null
-    docker network create --driver overlay --attachable dokploy-network
-
+    docker network rm -f hostify-network 2>/dev/null
+    docker network create --driver overlay --attachable hostify-network
+    
     echo "Network created"
-
-    mkdir -p /etc/dokploy
-
-    chmod 777 /etc/dokploy
-
+    
+    mkdir -p /etc/hostify
+    
+    chmod 777 /etc/hostify
+    
     # Generate secure random password for Postgres
     POSTGRES_PASSWORD=$(generate_random_password)
     
     # Store password as Docker Secret (encrypted and secure)
-    echo "$POSTGRES_PASSWORD" | docker secret create dokploy_postgres_password - 2>/dev/null || true
+    echo "$POSTGRES_PASSWORD" | docker secret create hostify_postgres_password - 2>/dev/null || true
     
     echo "Generated secure database credentials (stored in Docker Secrets)"
-
+    
     docker service create \
-    --name dokploy-postgres \
+    --name hostify-postgres \
     --constraint 'node.role==manager' \
-    --network dokploy-network \
-    --env POSTGRES_USER=dokploy \
-    --env POSTGRES_DB=dokploy \
-    --secret source=dokploy_postgres_password,target=/run/secrets/postgres_password \
+    --network hostify-network \
+    --env POSTGRES_USER=hostify \
+    --env POSTGRES_DB=hostify \
+    --secret source=hostify_postgres_password,target=/run/secrets/postgres_password \
     --env POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password \
-    --mount type=volume,source=dokploy-postgres,target=/var/lib/postgresql/data \
+    --mount type=volume,source=hostify-postgres,target=/var/lib/postgresql/data \
     $endpoint_mode \
     postgres:16
-
+    
     docker service create \
-    --name dokploy-redis \
+    --name hostify-redis \
     --constraint 'node.role==manager' \
-    --network dokploy-network \
-    --mount type=volume,source=dokploy-redis,target=/data \
+    --network hostify-network \
+    --mount type=volume,source=hostify-redis,target=/data \
     $endpoint_mode \
     redis:7
 
@@ -270,13 +270,13 @@ install_dokploy() {
     fi
     
     docker service create \
-      --name dokploy \
+      --name hostify \
       --replicas 1 \
-      --network dokploy-network \
+      --network hostify-network \
       --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
-      --mount type=bind,source=/etc/dokploy,target=/etc/dokploy \
-      --mount type=volume,source=dokploy,target=/root/.docker \
-      --secret source=dokploy_postgres_password,target=/run/secrets/postgres_password \
+      --mount type=bind,source=/etc/hostify,target=/etc/hostify \
+      --mount type=volume,source=hostify,target=/root/.docker \
+      --secret source=hostify_postgres_password,target=/run/secrets/postgres_password \
       --publish published=3000,target=3000,mode=host \
       --update-parallelism 1 \
       --update-order stop-first \
@@ -290,17 +290,17 @@ install_dokploy() {
     sleep 4
 
     docker run -d \
-        --name dokploy-traefik \
+        --name hostify-traefik \
         --restart always \
-        -v /etc/dokploy/traefik/traefik.yml:/etc/traefik/traefik.yml \
-        -v /etc/dokploy/traefik/dynamic:/etc/dokploy/traefik/dynamic \
+        -v /etc/hostify/traefik/traefik.yml:/etc/traefik/traefik.yml \
+        -v /etc/hostify/traefik/dynamic:/etc/hostify/traefik/dynamic \
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -p 80:80/tcp \
         -p 443:443/tcp \
         -p 443:443/udp \
         traefik:v3.6.7
     
-    docker network connect dokploy-network dokploy-traefik
+    docker network connect hostify-network hostify-traefik
 
 
     # Optional: Use docker service create instead of docker run
@@ -335,30 +335,30 @@ install_dokploy() {
     public_ip="${ADVERTISE_ADDR:-$(get_ip)}"
     formatted_addr=$(format_ip_for_url "$public_ip")
     echo ""
-    printf "${GREEN}Congratulations, Dokploy is installed!${NC}\n"
+    printf "${GREEN}Congratulations, Hostify is installed!${NC}\n"
     printf "${BLUE}Wait 15 seconds for the server to start${NC}\n"
     printf "${YELLOW}Please go to http://${formatted_addr}:3000${NC}\n\n"
 }
 
-update_dokploy() {
+update_hostify() {
     # Detect version tag
     VERSION_TAG=$(detect_version)
     DOCKER_IMAGE="ghcr.io/dp-info-system/hostify:${VERSION_TAG}"
     
-    echo "Updating Dokploy to version: ${VERSION_TAG}"
+    echo "Updating Hostify to version: ${VERSION_TAG}"
     
     # Pull the image
     docker pull $DOCKER_IMAGE
 
     # Update the service
-    docker service update --image $DOCKER_IMAGE dokploy
+    docker service update --image $DOCKER_IMAGE hostify
 
-    echo "Dokploy has been updated to version: ${VERSION_TAG}"
+    echo "Hostify has been updated to version: ${VERSION_TAG}"
 }
 
 # Main script execution
 if [ "$1" = "update" ]; then
-    update_dokploy
+    update_hostify
 else
-    install_dokploy
+    install_hostify
 fi
