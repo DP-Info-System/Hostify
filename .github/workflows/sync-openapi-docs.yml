@@ -44,20 +44,36 @@ jobs:
 
       - name: Sync to website repository
         run: |
-          # Clona el repositorio de website
-          git clone https://x-access-token:${{ secrets.DOCS_SYNC_TOKEN }}@github.com/dokploy/website.git website-repo
+          # Determine which token to use
+          if [ -z "${{ secrets.DOCS_SYNC_TOKEN }}" ]; then
+            echo "ℹ️  DOCS_SYNC_TOKEN not configured, falling back to GITHUB_TOKEN"
+            TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          else
+            TOKEN="${{ secrets.DOCS_SYNC_TOKEN }}"
+          fi
+          
+          # Clone the website repository
+          git clone https://x-access-token:${TOKEN}@github.com/dokploy/website.git website-repo || {
+            echo "⚠️  Failed to clone website repository. This may be expected if:"
+            echo "   - The repository is private and requires DOCS_SYNC_TOKEN"
+            echo "   - Network connectivity issues"
+            echo "   - Token permissions insufficient"
+            echo "To enable this step, configure DOCS_SYNC_TOKEN secret in GitHub repository settings"
+            echo "Continuing without syncing to website..."
+            exit 0
+          }
           
           cd website-repo
           
-          # Copia el openapi.json al website (sobrescribe)
+          # Copy openapi.json to website (overwrite)
           mkdir -p apps/docs/public
           cp -f ../openapi.json apps/docs/public/openapi.json
           
-          # Configura git
+          # Configure git
           git config user.name "Dokploy Bot"
           git config user.email "bot@dokploy.com"
           
-          # Agrega y commitea siempre
+          # Add and commit
           git add apps/docs/public/openapi.json
           git commit -m "chore: sync OpenAPI specification [skip ci]" \
             -m "Source: ${{ github.repository }}@${{ github.sha }}" \

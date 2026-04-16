@@ -7,7 +7,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { api } from "@/utils/api";
-import { ShowHostifyActions } from "./servers/actions/show-hostify-actions";
+import { ShowHostifyActions } from "./servers/actions/show-dokploy-actions";
 import { ShowStorageActions } from "./servers/actions/show-storage-actions";
 import { ShowTraefikActions } from "./servers/actions/show-traefik-actions";
 import { ToggleDockerCleanup } from "./servers/actions/toggle-docker-cleanup";
