@@ -285,6 +285,10 @@ install_hostify() {
       $release_tag_env \
       -e ADVERTISE_ADDR=$advertise_addr \
       -e POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password \
+      -e POSTGRES_HOST=hostify-postgres \
+      -e POSTGRES_USER=hostify \
+      -e POSTGRES_DB=hostify \
+      -e REDIS_HOST=hostify-redis \
       $DOCKER_IMAGE
 
     sleep 4

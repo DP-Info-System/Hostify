@@ -7,7 +7,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { api } from "@/utils/api";
-import { ShowHostifyActions } from "./servers/actions/show-dokploy-actions";
+import { ShowHostifyActions } from "./servers/actions/show-hostify-actions";
 import { ShowStorageActions } from "./servers/actions/show-storage-actions";
 import { ShowTraefikActions } from "./servers/actions/show-traefik-actions";
 import { ToggleDockerCleanup } from "./servers/actions/toggle-docker-cleanup";
@@ -16,7 +16,7 @@ export const WebServer = () => {
 	const { data: webServerSettings } =
 		api.settings.getWebServerSettings.useQuery();
 
-	const { data: dokployVersion } = api.settings.getDokployVersion.useQuery();
+	const { data: hostifyVersion } = api.settings.getHostifyVersion.useQuery();
 
 	return (
 		<div className="w-full">
@@ -50,7 +50,7 @@ export const WebServer = () => {
 								Server IP: {webServerSettings?.serverIp}
 							</span>
 							<span className="text-sm text-muted-foreground">
-								Hostify Version: {dokployVersion}
+								Hostify Version: {hostifyVersion}
 							</span>
 
 							<ToggleDockerCleanup />

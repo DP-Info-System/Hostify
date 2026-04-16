@@ -51,7 +51,7 @@ export const sendInvoiceEmail = async (
 			const pdfBuffer = await downloadPdf(invoice.invoice_pdf);
 			if (pdfBuffer) {
 				attachments.push({
-					filename: `dokploy-invoice-${invoice.number || invoice.id}.pdf`,
+					filename: `hostify-invoice-${invoice.number || invoice.id}.pdf`,
 					content: pdfBuffer,
 				});
 			}
@@ -59,7 +59,7 @@ export const sendInvoiceEmail = async (
 
 		await sendEmail({
 			email: admin.email,
-			subject: `Dokploy Invoice ${invoice.number || ""} - ${amountFormatted}`,
+			subject: `Hostify Invoice ${invoice.number || ""} - ${amountFormatted}`,
 			text: htmlContent,
 			attachments,
 		});
@@ -97,7 +97,7 @@ export const sendPaymentFailedEmail = async (
 
 		await sendEmail({
 			email: admin.email,
-			subject: `Action required: Dokploy payment failed - ${amountFormatted}`,
+			subject: `Action required: Hostify payment failed - ${amountFormatted}`,
 			text: htmlContent,
 		});
 

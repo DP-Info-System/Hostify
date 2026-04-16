@@ -124,7 +124,7 @@ const Invitation = ({
 				lastName: values.lastName,
 				fetchOptions: {
 					headers: {
-						"x-dokploy-token": token,
+						"x-hostify-token": token,
 					},
 				},
 			});

@@ -16,7 +16,7 @@ import {
 	execAsync,
 	findServerById,
 	getDockerDiskUsage,
-	getDokployImageTag,
+	getHostifyImageTag,
 	getLogCleanupStatus,
 	getUpdateData,
 	getWebServerSettings,
@@ -93,11 +93,11 @@ export const settingsRouter = createTRPCRouter({
 		if (IS_CLOUD) {
 			return true;
 		}
-		await reloadDockerResource("dokploy", undefined, packageInfo.version);
+		await reloadDockerResource("hostify", undefined, packageInfo.version);
 		await audit(ctx, {
 			action: "reload",
 			resourceType: "settings",
-			resourceName: "dokploy",
+			resourceName: "hostify",
 		});
 		return true;
 	}),
@@ -107,7 +107,7 @@ export const settingsRouter = createTRPCRouter({
 		}
 
 		const { stdout: containerId } = await execAsync(
-			`docker ps --filter "name=dokploy-redis" --filter "status=running" -q | head -n 1`,
+			`docker ps --filter "name=hostify-redis" --filter "status=running" -q | head -n 1`,
 		);
 
 		if (!containerId) {
@@ -128,11 +128,11 @@ export const settingsRouter = createTRPCRouter({
 		if (IS_CLOUD) {
 			return true;
 		}
-		await reloadDockerResource("dokploy-redis");
+		await reloadDockerResource("hostify-redis");
 		await audit(ctx, {
 			action: "reload",
 			resourceType: "settings",
-			resourceName: "dokploy-redis",
+			resourceName: "hostify-redis",
 		});
 		return true;
 	}),
@@ -152,7 +152,7 @@ export const settingsRouter = createTRPCRouter({
 		.input(apiServerSchema)
 		.mutation(async ({ input, ctx }) => {
 			// Run in background so the request returns immediately; avoids proxy timeouts.
-			void reloadDockerResource("dokploy-traefik", input?.serverId).catch(
+			void reloadDockerResource("hostify-traefik", input?.serverId).catch(
 				(err) => {
 					console.error("reloadTraefik background:", err);
 				},
@@ -160,16 +160,16 @@ export const settingsRouter = createTRPCRouter({
 			await audit(ctx, {
 				action: "reload",
 				resourceType: "settings",
-				resourceName: "dokploy-traefik",
+				resourceName: "hostify-traefik",
 			});
 			return true;
 		}),
 	toggleDashboard: adminProcedure
 		.input(apiEnableDashboard)
 		.mutation(async ({ input, ctx }) => {
-			const ports = await readPorts("dokploy-traefik", input.serverId);
+			const ports = await readPorts("hostify-traefik", input.serverId);
 			const env = await readEnvironmentVariables(
-				"dokploy-traefik",
+				"hostify-traefik",
 				input.serverId,
 			);
 			const preparedEnv = prepareEnvironmentVariables(env);
@@ -472,7 +472,7 @@ export const settingsRouter = createTRPCRouter({
 		if (IS_CLOUD) {
 			return true;
 		}
-		const traefikConfig = readConfig("dokploy");
+		const traefikConfig = readConfig("hostify");
 		return traefikConfig;
 	}),
 	updateWebServerTraefikConfig: adminProcedure
@@ -481,7 +481,7 @@ export const settingsRouter = createTRPCRouter({
 			if (IS_CLOUD) {
 				return true;
 			}
-			writeConfig("dokploy", input.traefikConfig);
+			writeConfig("hostify", input.traefikConfig);
 			await audit(ctx, {
 				action: "update",
 				resourceType: "settings",
@@ -531,24 +531,24 @@ export const settingsRouter = createTRPCRouter({
 				"update",
 				"--force",
 				"--image",
-				`dokploy/dokploy:${data.latestVersion}`,
-				"dokploy",
+				`hostify/hostify:${data.latestVersion}`,
+				"hostify",
 			]);
 			await audit(ctx, {
 				action: "update",
 				resourceType: "settings",
-				resourceName: "dokploy-version",
+				resourceName: "hostify-version",
 			});
 		}
 
 		return true;
 	}),
 
-	getDokployVersion: protectedProcedure.query(() => {
+	getHostifyVersion: protectedProcedure.query(() => {
 		return packageInfo.version;
 	}),
 	getReleaseTag: protectedProcedure.query(() => {
-		return getDokployImageTag();
+		return getHostifyImageTag();
 	}),
 	readDirectories: protectedProcedure
 		.input(apiServerSchema)
@@ -680,8 +680,8 @@ export const settingsRouter = createTRPCRouter({
 			});
 
 			openApiDocument.info = {
-				title: "Dokploy API",
-				description: "Endpoints for dokploy",
+				title: "Hostify API",
+				description: "Endpoints for hostify",
 				version: packageInfo.version,
 			};
 
@@ -711,7 +711,7 @@ export const settingsRouter = createTRPCRouter({
 		.input(apiServerSchema)
 		.query(async ({ input }) => {
 			const envVars = await readEnvironmentVariables(
-				"dokploy-traefik",
+				"hostify-traefik",
 				input?.serverId,
 			);
 			return envVars;
@@ -721,7 +721,7 @@ export const settingsRouter = createTRPCRouter({
 		.input(z.object({ env: z.string(), serverId: z.string().optional() }))
 		.mutation(async ({ input, ctx }) => {
 			const envs = prepareEnvironmentVariables(input.env);
-			const ports = await readPorts("dokploy-traefik", input?.serverId);
+			const ports = await readPorts("hostify-traefik", input?.serverId);
 
 			// Run in background so the request returns immediately; client polls /api/health.
 			void writeTraefikSetup({
@@ -741,7 +741,7 @@ export const settingsRouter = createTRPCRouter({
 	haveTraefikDashboardPortEnabled: adminProcedure
 		.input(apiServerSchema)
 		.query(async ({ input }) => {
-			const ports = await readPorts("dokploy-traefik", input?.serverId);
+			const ports = await readPorts("hostify-traefik", input?.serverId);
 			return ports.some((port) => port.targetPort === 8080);
 		}),
 
@@ -845,7 +845,7 @@ export const settingsRouter = createTRPCRouter({
 			if (input.enable) {
 				const config = {
 					accessLog: {
-						filePath: "/etc/dokploy/traefik/dynamic/access.log",
+						filePath: "/etc/hostify/traefik/dynamic/access.log",
 						format: "json",
 						bufferingSize: 100,
 					},
@@ -984,7 +984,7 @@ export const settingsRouter = createTRPCRouter({
 					});
 				}
 				const env = await readEnvironmentVariables(
-					"dokploy-traefik",
+					"hostify-traefik",
 					input?.serverId,
 				);
 
@@ -1033,7 +1033,7 @@ export const settingsRouter = createTRPCRouter({
 	getTraefikPorts: adminProcedure
 		.input(apiServerSchema)
 		.query(async ({ input }) => {
-			const ports = await readPorts("dokploy-traefik", input?.serverId);
+			const ports = await readPorts("hostify-traefik", input?.serverId);
 			return ports;
 		}),
 	updateLogCleanup: protectedProcedure
@@ -1064,7 +1064,7 @@ export const settingsRouter = createTRPCRouter({
 		return getLogCleanupStatus();
 	}),
 
-	getDokployCloudIps: adminProcedure.query(async () => {
+	getHostifyCloudIps: adminProcedure.query(async () => {
 		if (!IS_CLOUD) {
 			return [];
 		}

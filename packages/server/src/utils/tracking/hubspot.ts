@@ -66,7 +66,7 @@ export function formatContactDataForHubSpot(
 			},
 		],
 		context: {
-			pageUri: "https://app.dokploy.com/register",
+			pageUri: "https://app.hostify.com/register",
 			pageName: "Sign Up",
 		},
 	};

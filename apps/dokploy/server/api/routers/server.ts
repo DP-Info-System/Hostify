@@ -288,7 +288,7 @@ export const serverRouter = createTRPCRouter({
 						enabled: boolean;
 						version: string;
 					};
-					isDokployNetworkInstalled: boolean;
+					isHostifyNetworkInstalled: boolean;
 					isSwarmInstalled: boolean;
 					isMainDirectoryInstalled: boolean;
 					privilegeMode: string;

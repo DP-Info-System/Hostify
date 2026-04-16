@@ -208,29 +208,29 @@ export const addDomainToCompose = async (
 			labels.unshift(...httpLabels);
 			if (!compose.isolatedDeployment) {
 				if (compose.composeType === "docker-compose") {
-					if (!labels.includes("traefik.docker.network=dokploy-network")) {
-						labels.unshift("traefik.docker.network=dokploy-network");
+					if (!labels.includes("traefik.docker.network=hostify-network")) {
+						labels.unshift("traefik.docker.network=hostify-network");
 					}
 				} else {
 					// Stack Case
-					if (!labels.includes("traefik.swarm.network=dokploy-network")) {
-						labels.unshift("traefik.swarm.network=dokploy-network");
+					if (!labels.includes("traefik.swarm.network=hostify-network")) {
+						labels.unshift("traefik.swarm.network=hostify-network");
 					}
 				}
 			}
 		}
 
 		if (!compose.isolatedDeployment) {
-			// Add the dokploy-network to the service
-			result.services[serviceName].networks = addDokployNetworkToService(
+			// Add the hostify-network to the service
+			result.services[serviceName].networks = addHostifyNetworkToService(
 				result.services[serviceName].networks,
 			);
 		}
 	}
 
-	// Add dokploy-network to the root of the compose file
+	// Add hostify-network to the root of the compose file
 	if (!compose.isolatedDeployment) {
-		result.networks = addDokployNetworkToRoot(result.networks);
+		result.networks = addHostifyNetworkToRoot(result.networks);
 	}
 
 	return result;
@@ -343,11 +343,11 @@ export const createDomainLabels = (
 	return labels;
 };
 
-export const addDokployNetworkToService = (
+export const addHostifyNetworkToService = (
 	networkService: DefinitionsService["networks"],
 ) => {
 	let networks = networkService;
-	const network = "dokploy-network";
+	const network = "hostify-network";
 	const defaultNetwork = "default";
 	if (!networks) {
 		networks = [];
@@ -372,11 +372,11 @@ export const addDokployNetworkToService = (
 	return networks;
 };
 
-export const addDokployNetworkToRoot = (
+export const addHostifyNetworkToRoot = (
 	networkRoot: PropertiesNetworks | undefined,
 ) => {
 	let networks = networkRoot;
-	const network = "dokploy-network";
+	const network = "hostify-network";
 
 	if (!networks) {
 		networks = {};

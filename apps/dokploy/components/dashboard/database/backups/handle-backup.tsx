@@ -217,7 +217,7 @@ export const HandleBackup = ({
 		defaultValues: {
 			database:
 				databaseType === "web-server"
-					? "dokploy"
+					? "hostify"
 					: databaseType === "libsql"
 						? "iku.db"
 						: "",
@@ -256,7 +256,7 @@ export const HandleBackup = ({
 			database: backup?.database
 				? backup?.database
 				: databaseType === "web-server"
-					? "dokploy"
+					? "hostify"
 					: databaseType === "libsql"
 						? "iku.db"
 						: "",

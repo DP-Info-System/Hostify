@@ -1,6 +1,6 @@
 import { db } from "@dokploy/server/db";
 import { notifications } from "@dokploy/server/db/schema";
-import DokployBackupEmail from "@dokploy/server/emails/emails/dokploy-backup";
+import HostifyBackupEmail from "@dokploy/server/emails/emails/hostify-backup";
 import { renderAsync } from "@react-email/components";
 import { format } from "date-fns";
 import { eq } from "drizzle-orm";
@@ -19,7 +19,7 @@ import {
 	sendTelegramNotification,
 } from "./utils";
 
-export const sendDokployBackupNotifications = async ({
+export const sendHostifyBackupNotifications = async ({
 	type,
 	errorMessage,
 	backupSize,
@@ -31,7 +31,7 @@ export const sendDokployBackupNotifications = async ({
 	const date = new Date();
 	const unixDate = ~~(Number(date) / 1000);
 	const notificationList = await db.query.notifications.findMany({
-		where: eq(notifications.dokployBackup, true),
+		where: eq(notifications.hostifyBackup, true),
 		with: {
 			email: true,
 			discord: true,
@@ -67,7 +67,7 @@ export const sendDokployBackupNotifications = async ({
 		try {
 			if (email || resend) {
 				const template = await renderAsync(
-					DokployBackupEmail({
+					HostifyBackupEmail({
 						type,
 						errorMessage,
 						date: date.toLocaleString(),
@@ -78,7 +78,7 @@ export const sendDokployBackupNotifications = async ({
 				if (email) {
 					await sendEmailNotification(
 						email,
-						"Dokploy instance backup",
+						"Hostify instance backup",
 						template,
 					);
 				}
@@ -86,7 +86,7 @@ export const sendDokployBackupNotifications = async ({
 				if (resend) {
 					await sendResendNotification(
 						resend,
-						"Dokploy instance backup",
+						"Hostify instance backup",
 						template,
 					);
 				}
@@ -99,13 +99,13 @@ export const sendDokployBackupNotifications = async ({
 				await sendDiscordNotification(discord, {
 					title:
 						type === "success"
-							? decorate(">", "`✅` Dokploy Backup Successful")
-							: decorate(">", "`❌` Dokploy Backup Failed"),
+							? decorate(">", "`✅` Hostify Backup Successful")
+							: decorate(">", "`❌` Hostify Backup Failed"),
 					color: type === "success" ? 0x57f287 : 0xed4245,
 					fields: [
 						{
 							name: decorate("`📦`", "Backup Type"),
-							value: "Complete Dokploy Instance",
+							value: "Complete Hostify Instance",
 							inline: true,
 						},
 						...(backupSize
@@ -145,7 +145,7 @@ export const sendDokployBackupNotifications = async ({
 					],
 					timestamp: date.toISOString(),
 					footer: {
-						text: "Dokploy Instance Backup Notification",
+						text: "Hostify Instance Backup Notification",
 					},
 				});
 			}
@@ -158,9 +158,9 @@ export const sendDokployBackupNotifications = async ({
 					gotify,
 					decorate(
 						type === "success" ? "✅" : "❌",
-						`Dokploy Backup ${type === "success" ? "Successful" : "Failed"}`,
+						`Hostify Backup ${type === "success" ? "Successful" : "Failed"}`,
 					),
-					`${decorate("📦", "Backup Type: Complete Dokploy Instance")}` +
+					`${decorate("📦", "Backup Type: Complete Hostify Instance")}` +
 						`${backupSize ? decorate("💾", `Backup Size: ${backupSize}`) : ""}` +
 						`${decorate("🕒", `Date: ${date.toLocaleString()}`)}` +
 						`${type === "error" && errorMessage ? decorate("❌", `Error:\n${errorMessage}`) : ""}`,
@@ -170,10 +170,10 @@ export const sendDokployBackupNotifications = async ({
 			if (ntfy) {
 				await sendNtfyNotification(
 					ntfy,
-					`Dokploy Backup ${type === "success" ? "Successful" : "Failed"}`,
+					`Hostify Backup ${type === "success" ? "Successful" : "Failed"}`,
 					`${type === "success" ? "white_check_mark" : "x"}`,
 					"",
-					"📦Backup Type: Complete Dokploy Instance\n" +
+					"📦Backup Type: Complete Hostify Instance\n" +
 						`${backupSize ? `💾Backup Size: ${backupSize}\n` : ""}` +
 						`🕒Date: ${date.toLocaleString()}\n` +
 						`${type === "error" && errorMessage ? `❌Error:\n${errorMessage}` : ""}`,
@@ -192,7 +192,7 @@ export const sendDokployBackupNotifications = async ({
 					? `\n<b>Backup Size:</b> ${backupSize}`
 					: "";
 
-				const messageText = `<b>${statusEmoji} Dokploy Backup ${typeStatus}</b>\n\n<b>Backup Type:</b> Complete Dokploy Instance${sizeInfo}\n<b>Date:</b> ${format(date, "PP")}\n<b>Time:</b> ${format(date, "pp")}${isError ? errorMsg : ""}`;
+				const messageText = `<b>${statusEmoji} Hostify Backup ${typeStatus}</b>\n\n<b>Backup Type:</b> Complete Hostify Instance${sizeInfo}\n<b>Date:</b> ${format(date, "PP")}\n<b>Time:</b> ${format(date, "pp")}${isError ? errorMsg : ""}`;
 
 				await sendTelegramNotification(telegram, messageText);
 			}
@@ -206,8 +206,8 @@ export const sendDokployBackupNotifications = async ({
 							color: type === "success" ? "#00FF00" : "#FF0000",
 							pretext:
 								type === "success"
-									? ":white_check_mark: *Dokploy Backup Successful*"
-									: ":x: *Dokploy Backup Failed*",
+									? ":white_check_mark: *Hostify Backup Successful*"
+									: ":x: *Hostify Backup Failed*",
 							fields: [
 								...(type === "error" && errorMessage
 									? [
@@ -220,7 +220,7 @@ export const sendDokployBackupNotifications = async ({
 									: []),
 								{
 									title: "Backup Type",
-									value: "Complete Dokploy Instance",
+									value: "Complete Hostify Instance",
 									short: true,
 								},
 								...(backupSize
@@ -276,8 +276,8 @@ export const sendDokployBackupNotifications = async ({
 								tag: "plain_text",
 								content:
 									type === "success"
-										? "✅ Dokploy Backup Successful"
-										: "❌ Dokploy Backup Failed",
+										? "✅ Hostify Backup Successful"
+										: "❌ Hostify Backup Failed",
 							},
 							subtitle: {
 								tag: "plain_text",
@@ -300,7 +300,7 @@ export const sendDokployBackupNotifications = async ({
 												{
 													tag: "markdown",
 													content:
-														"**Backup Type:**\nComplete Dokploy Instance",
+														"**Backup Type:**\nComplete Hostify Instance",
 													text_align: "left",
 													text_size: "normal_v2",
 												},
@@ -360,43 +360,43 @@ export const sendDokployBackupNotifications = async ({
 				const statusEmoji = type === "success" ? ":white_check_mark:" : ":x:";
 				const typeStatus = type === "success" ? "Successful" : "Failed";
 				await sendMattermostNotification(mattermost, {
-					text: `${statusEmoji} **Dokploy Backup ${typeStatus}**
+					text: `${statusEmoji} **Hostify Backup ${typeStatus}**
 
-**Backup Type:** Complete Dokploy Instance${backupSize ? `\n**Backup Size:** ${backupSize}` : ""}
+**Backup Type:** Complete Hostify Instance${backupSize ? `\n**Backup Size:** ${backupSize}` : ""}
 **Date:** ${date.toLocaleString()}
 **Status:** ${typeStatus}${type === "error" && errorMessage ? `\n\n**Error:**\n\`\`\`\n${errorMessage}\n\`\`\`` : ""}`,
 					channel: mattermost.channel,
-					username: mattermost.username || "Dokploy Bot",
+					username: mattermost.username || "Hostify Bot",
 				});
 			}
 
 			if (custom) {
 				await sendCustomNotification(custom, {
-					title: `Dokploy Backup ${type === "success" ? "Successful" : "Failed"}`,
-					message: `Dokploy instance backup ${type === "success" ? "completed successfully" : "failed"}`,
-					backupType: "Complete Dokploy Instance",
+					title: `Hostify Backup ${type === "success" ? "Successful" : "Failed"}`,
+					message: `Hostify instance backup ${type === "success" ? "completed successfully" : "failed"}`,
+					backupType: "Complete Hostify Instance",
 					...(backupSize ? { backupSize } : {}),
 					...(type === "error" && errorMessage ? { errorMessage } : {}),
 					timestamp: date.toISOString(),
 					date: date.toLocaleString(),
 					status: type,
-					type: "dokploy-backup",
+					type: "hostify-backup",
 				});
 			}
 
 			if (pushover) {
 				await sendPushoverNotification(
 					pushover,
-					`Dokploy Backup ${type === "success" ? "Successful" : "Failed"}`,
-					`Backup Type: Complete Dokploy Instance${backupSize ? `\nBackup Size: ${backupSize}` : ""}\nDate: ${date.toLocaleString()}${type === "error" && errorMessage ? `\nError: ${errorMessage}` : ""}`,
+					`Hostify Backup ${type === "success" ? "Successful" : "Failed"}`,
+					`Backup Type: Complete Hostify Instance${backupSize ? `\nBackup Size: ${backupSize}` : ""}\nDate: ${date.toLocaleString()}${type === "error" && errorMessage ? `\nError: ${errorMessage}` : ""}`,
 				);
 			}
 
 			if (teams) {
 				await sendTeamsNotification(teams, {
-					title: `${type === "success" ? "✅" : "❌"} Dokploy Backup ${type === "success" ? "Successful" : "Failed"}`,
+					title: `${type === "success" ? "✅" : "❌"} Hostify Backup ${type === "success" ? "Successful" : "Failed"}`,
 					facts: [
-						{ name: "Backup Type", value: "Complete Dokploy Instance" },
+						{ name: "Backup Type", value: "Complete Hostify Instance" },
 						...(backupSize ? [{ name: "Backup Size", value: backupSize }] : []),
 						{ name: "Date", value: format(date, "PP pp") },
 						{

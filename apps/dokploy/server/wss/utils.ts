@@ -77,16 +77,16 @@ export const getShell = () => {
 	}
 };
 
-/** Returns private SSH key for dokploy local server terminal. Uses already created SSH key or generates a new SSH key.
+/** Returns private SSH key for hostify local server terminal. Uses already created SSH key or generates a new SSH key.
  */
 export const setupLocalServerSSHKey = async () => {
 	const { SSH_PATH } = paths(true);
-	const sshKeyPath = path.join(SSH_PATH, "auto_generated-dokploy-local");
+	const sshKeyPath = path.join(SSH_PATH, "auto_generated-hostify-local");
 
 	if (!fs.existsSync(sshKeyPath)) {
 		// Generate new SSH key if it hasn't been created yet
 		await execAsync(
-			`ssh-keygen -t rsa -b 4096 -f ${sshKeyPath} -N "" -C "dokploy-local-access"`,
+			`ssh-keygen -t rsa -b 4096 -f ${sshKeyPath} -N "" -C "hostify-local-access"`,
 		);
 	}
 

@@ -52,7 +52,7 @@ export const ShowHostifyActions = () => {
 					<TerminalModal serverId="local">
 						<span>Terminal</span>
 					</TerminalModal>
-					<ShowModalLogs appName="dokploy">
+					<ShowModalLogs appName="hostify">
 						<DropdownMenuItem
 							className="cursor-pointer"
 							onSelect={(e) => e.preventDefault()}

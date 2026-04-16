@@ -61,10 +61,10 @@ export const StepOne = ({ setTemplateInfo, templateInfo }: any) => {
 							<Select
 								value={
 									templateInfo.server?.serverId ||
-									(!isCloud ? "dokploy" : undefined)
+									(!isCloud ? "hostify" : undefined)
 								}
 								onValueChange={(value) => {
-									if (value === "dokploy") {
+									if (value === "hostify") {
 										setTemplateInfo({
 											...templateInfo,
 											server: undefined,
@@ -88,7 +88,7 @@ export const StepOne = ({ setTemplateInfo, templateInfo }: any) => {
 								<SelectContent>
 									<SelectGroup>
 										{!isCloud && (
-											<SelectItem value="dokploy">
+											<SelectItem value="hostify">
 												<span className="flex items-center gap-2 justify-between w-full">
 													<span>Hostify</span>
 													<span className="text-muted-foreground text-xs self-center">

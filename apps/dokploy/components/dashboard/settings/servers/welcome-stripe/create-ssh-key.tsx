@@ -19,7 +19,7 @@ export const CreateSSHKey = () => {
 	);
 
 	const cloudSSHKey = data?.find(
-		(sshKey) => sshKey.name === "dokploy-cloud-ssh-key",
+		(sshKey) => sshKey.name === "hostify-cloud-ssh-key",
 	);
 
 	useEffect(() => {
@@ -35,7 +35,7 @@ export const CreateSSHKey = () => {
 					type: "rsa",
 				});
 				await mutateAsync({
-					name: "dokploy-cloud-ssh-key",
+					name: "hostify-cloud-ssh-key",
 					description: "Used on Hostify Cloud",
 					privateKey: keys.privateKey,
 					publicKey: keys.publicKey,
@@ -172,7 +172,7 @@ export const CreateSSHKey = () => {
 											etc.)
 										</p>
 										<Link
-											href="https://docs.dokploy.com/docs/core/remote-servers/instructions#requirements"
+											href="https://docs.hostify.com/docs/core/remote-servers/instructions#requirements"
 											target="_blank"
 											className="text-primary flex flex-row gap-2 mt-2"
 										>
