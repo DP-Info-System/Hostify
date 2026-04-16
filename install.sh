@@ -234,7 +234,9 @@ install_hostify() {
     POSTGRES_PASSWORD=$(generate_random_password)
     
     # Store password as Docker Secret (encrypted and secure)
-    echo "$POSTGRES_PASSWORD" | docker secret create hostify_postgres_password - 2>/dev/null || true
+    # Remove old secret if it exists to avoid password mismatch
+    docker secret rm hostify_postgres_password 2>/dev/null || true
+    echo "$POSTGRES_PASSWORD" | docker secret create hostify_postgres_password -
     
     echo "Generated secure database credentials (stored in Docker Secrets)"
     
