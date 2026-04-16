@@ -5,6 +5,10 @@ on:
     branches: [main, canary]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
   ORG: dp-info-system
