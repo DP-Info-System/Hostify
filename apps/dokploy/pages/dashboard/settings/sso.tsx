@@ -20,7 +20,7 @@ const Page = () => {
 								lockedProps={{
 									title: "Enterprise SSO",
 									description:
-										"Single sign-on (SSO) with OIDC and SAML is part of Dokploy Enterprise. Add a valid license to configure it.",
+										"Single sign-on (SSO) with OIDC and SAML is part of Hostify Enterprise. Add a valid license to configure it.",
 									ctaLabel: "Go to License",
 								}}
 							>

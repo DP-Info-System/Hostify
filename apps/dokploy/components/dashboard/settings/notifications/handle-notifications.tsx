@@ -1526,7 +1526,7 @@ export const HandleNotifications = ({ notificationId }: Props) => {
 												<FormItem>
 													<FormLabel>Username</FormLabel>
 													<FormControl>
-														<Input placeholder="Dokploy" {...field} />
+														<Input placeholder="Hostify" {...field} />
 													</FormControl>
 													<FormDescription>
 														Optional. Display name for the webhook.
@@ -1888,9 +1888,9 @@ export const HandleNotifications = ({ notificationId }: Props) => {
 									render={({ field }) => (
 										<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm gap-2">
 											<div className="space-y-0.5">
-												<FormLabel>Dokploy Backup</FormLabel>
+												<FormLabel>Hostify Backup</FormLabel>
 												<FormDescription>
-													Trigger the action when a dokploy backup is created.
+													Trigger the action when a Hostify backup is created.
 												</FormDescription>
 											</div>
 											<FormControl>
@@ -1953,9 +1953,9 @@ export const HandleNotifications = ({ notificationId }: Props) => {
 										render={({ field }) => (
 											<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm gap-2">
 												<div className="space-y-0.5">
-													<FormLabel>Dokploy Restart</FormLabel>
+													<FormLabel>Hostify Restart</FormLabel>
 													<FormDescription>
-														Trigger the action when dokploy is restarted.
+														Trigger the action when Hostify is restarted.
 													</FormDescription>
 												</div>
 												<FormControl>

@@ -1,237 +1,167 @@
-import { Key, Loader2, ShieldCheck } from "lucide-react";
+import { Copy, Key, Loader2, ShieldCheck, CheckCircle2, Calendar, CreditCard, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { DialogAction } from "@/components/shared/dialog-action";
 import { Button } from "@/components/ui/button";
-import { CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { api } from "@/utils/api";
+import { CardTitle, CardDescription } from "@/components/ui/card";
+import { useLicense } from "@/components/shared/license-provider";
+import { Badge } from "@/components/ui/badge";
 
 export function LicenseKeySettings() {
-	const utils = api.useUtils();
-	const { data, isPending } = api.licenseKey.getEnterpriseSettings.useQuery();
-	const { mutateAsync: updateEnterpriseSettings, isPending: isSaving } =
-		api.licenseKey.updateEnterpriseSettings.useMutation();
-	const { mutateAsync: activateLicenseKey, isPending: isActivating } =
-		api.licenseKey.activate.useMutation();
-	const { mutateAsync: validateLicenseKey, isPending: isValidating } =
-		api.licenseKey.validate.useMutation();
-	const { mutateAsync: deactivateLicenseKey, isPending: isDeactivating } =
-		api.licenseKey.deactivate.useMutation();
-	const { data: haveValidLicenseKey, isPending: isCheckingLicenseKey } =
-		api.licenseKey.haveValidLicenseKey.useQuery();
-	const [licenseKey, setLicenseKey] = useState("");
+	const { licenseData, isLicenseActive, isLoading, email } = useLicense();
+	const [copiedField, setCopiedField] = useState<string | null>(null);
 
-	useEffect(() => {
-		if (data?.licenseKey) {
-			setLicenseKey(data.licenseKey);
+	const copyToClipboard = async (text: string, field: string) => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopiedField(field);
+			toast.success(`${field} copied to clipboard`);
+			setTimeout(() => setCopiedField(null), 2000);
+		} catch (err) {
+			toast.error("Failed to copy");
 		}
-	}, [data?.licenseKey]);
+	};
 
-	const enabled = !!data?.enableEnterpriseFeatures;
+	const formatDate = (dateStr?: string) => {
+		if (!dateStr) return "N/A";
+		return new Intl.DateTimeFormat("en-US", {
+			dateStyle: "long",
+			timeStyle: "short",
+		}).format(new Date(dateStr));
+	};
+
+	if (isLoading) {
+		return (
+			<div className="flex flex-col items-center gap-4 justify-center min-h-[30vh]">
+				<Loader2 className="size-8 text-muted-foreground animate-spin" />
+				<p className="text-sm text-muted-foreground">Fetching license details...</p>
+			</div>
+		);
+	}
+
+	if (isLicenseActive && licenseData) {
+		return (
+			<div className="flex flex-col gap-6">
+				<div className="flex flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-3">
+							<div className="rounded-full bg-primary/10 p-2 text-primary">
+								<CheckCircle2 className="size-6" />
+							</div>
+							<div>
+								<CardTitle className="text-2xl font-bold italic tracking-tight uppercase">
+									Hostify Pro
+								</CardTitle>
+							</div>
+						</div>
+						<Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-3 py-1 text-sm font-semibold capitalize">
+							{licenseData.status || "Active"}
+						</Badge>
+					</div>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+						<div className="space-y-4">
+							<div className="space-y-1">
+								<label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">License Key</label>
+								<div className="flex items-center gap-2 group">
+									<code className="flex-1 rounded bg-muted px-3 py-2 text-sm font-mono break-all border border-muted-foreground/10">
+										{licenseData.license_key || "N/A"}
+									</code>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="shrink-0"
+										onClick={() => copyToClipboard(licenseData.license_key || "", "License Key")}
+									>
+										<Copy className="size-4" />
+									</Button>
+								</div>
+							</div>
+
+							<div className="space-y-1">
+								<label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Subscription ID</label>
+								<div className="flex items-center gap-2">
+									<code className="flex-1 rounded bg-muted px-3 py-2 text-sm font-mono break-all border border-muted-foreground/10 text-muted-foreground">
+										{licenseData.subscription_id || "N/A"}
+									</code>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="shrink-0"
+										onClick={() => copyToClipboard(licenseData.subscription_id || "", "Subscription ID")}
+									>
+										<Copy className="size-4" />
+									</Button>
+								</div>
+							</div>
+						</div>
+
+						<div className="flex flex-col gap-4">
+							<div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
+								<Calendar className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+								<div className="space-y-1">
+									<p className="text-sm font-medium">Valid Until</p>
+									<p className="text-xs text-muted-foreground italic">
+										{formatDate(licenseData.expires_at)}
+									</p>
+									{licenseData.grace_until && (
+										<p className="text-[10px] text-amber-500/80 font-medium pt-1">
+											(Grace period ends: {formatDate(licenseData.grace_until)})
+										</p>
+									)}
+								</div>
+							</div>
+							
+							<div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
+								<div className="flex items-center gap-3">
+									<CreditCard className="size-5 text-muted-foreground" />
+									<p className="text-sm font-medium">Billing Account</p>
+								</div>
+								<p className="text-sm text-muted-foreground">{email}</p>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="flex flex-col gap-4 rounded-lg border p-4">
-			{isCheckingLicenseKey ? (
-				<div className="flex items-center gap-2 justify-center min-h-[25vh]">
-					<Loader2 className="size-6 text-muted-foreground animate-spin" />
-					<span className="text-sm text-muted-foreground">
-						Checking license key...
-					</span>
-				</div>
-			) : (
-				<>
-					<div className="flex flex-col gap-2">
-						<div className="flex items-center justify-between gap-4">
-							<div className="flex items-center gap-2">
-								<Key className="size-6 text-muted-foreground" />
-								<CardTitle className="text-xl">License Key</CardTitle>
-							</div>
-
-							{enabled && (
-								<div className="flex items-center gap-2">
-									<span className="text-xs text-muted-foreground">
-										{enabled ? "Enabled" : "Disabled"}
-									</span>
-									<Switch
-										checked={enabled}
-										disabled={isPending || isSaving || isDeactivating}
-										onCheckedChange={async (next) => {
-											try {
-												await updateEnterpriseSettings({
-													enableEnterpriseFeatures: next,
-												});
-												await utils.licenseKey.getEnterpriseSettings.invalidate();
-												toast.success("Enterprise features updated");
-											} catch (error) {
-												console.error(error);
-												toast.error("Failed to update enterprise features");
-											}
-										}}
-									/>
-								</div>
-							)}
-						</div>
-
-						<p className="text-sm text-muted-foreground">
-							To unlock extra features you need an enterprise license key.
-							Contact us{" "}
-							<Link
-								href="https://dokploy.com/contact"
-								target="_blank"
-								rel="noreferrer"
-								className="underline underline-offset-4"
-							>
-								here
-							</Link>
-							.
+		<div className="flex flex-col gap-4 rounded-lg border p-4 bg-muted/10">
+			<div className="flex flex-col items-center gap-4 justify-center min-h-[40vh] text-center">
+				<div className="flex flex-col items-center gap-4 max-w-[450px]">
+					<div className="rounded-full bg-muted p-6 shadow-inner">
+						<ShieldCheck className="size-12 text-muted-foreground/50" />
+					</div>
+					<div className="space-y-2">
+						<h3 className="text-2xl font-bold tracking-tight">Enterprise Features</h3>
+						<p className="text-balance text-muted-foreground">
+							Unlock the power of Hostify with persistent license management, 
+							shared whitelabeling, and priority cloud activation.
 						</p>
 					</div>
-					{enabled ? (
-						<>
-							<div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-								<div className="space-y-2">
-									<label className="text-sm font-medium" htmlFor="licenseKey">
-										License Key
-									</label>
-									<Input
-										id="licenseKey"
-										placeholder="Enter your enterprise license key"
-										value={licenseKey}
-										onChange={(e) => setLicenseKey(e.target.value)}
-									/>
-								</div>
-								<div className="md:justify-self-end flex gap-2">
-									{haveValidLicenseKey && (
-										<DialogAction
-											title="Deactivate License Key"
-											description="Are you sure you want to deactivate this license key? This will disable enterprise features."
-											onClick={async () => {
-												try {
-													await deactivateLicenseKey();
-													await utils.licenseKey.getEnterpriseSettings.invalidate();
-													await utils.licenseKey.haveValidLicenseKey.invalidate();
-													setLicenseKey("");
-													toast.success("License key deactivated");
-												} catch (error) {
-													console.error(error);
-													toast.error(
-														error instanceof Error
-															? error.message
-															: "Failed to deactivate license key",
-													);
-												}
-											}}
-											disabled={isDeactivating || !haveValidLicenseKey}
-										>
-											<Button
-												variant="destructive"
-												disabled={isDeactivating || !haveValidLicenseKey}
-												isLoading={isDeactivating}
-											>
-												Deactivate
-											</Button>
-										</DialogAction>
-									)}
-									{haveValidLicenseKey && (
-										<Button
-											variant="outline"
-											disabled={
-												isSaving || isCheckingLicenseKey || isDeactivating
-											}
-											isLoading={isValidating}
-											onClick={async () => {
-												try {
-													const valid = await validateLicenseKey();
-													if (valid) {
-														toast.success("License key is valid");
-													} else {
-														toast.error("License key is invalid");
-													}
-												} catch (error) {
-													console.error(error);
-													toast.error(
-														error instanceof Error
-															? error.message
-															: "Failed to validate license key",
-													);
-												}
-											}}
-										>
-											Validate
-										</Button>
-									)}
-									{!haveValidLicenseKey && (
-										<Button
-											variant="secondary"
-											disabled={
-												isSaving ||
-												isValidating ||
-												isDeactivating ||
-												!licenseKey.trim()
-											}
-											isLoading={isActivating}
-											onClick={async () => {
-												try {
-													await activateLicenseKey({ licenseKey });
-													await utils.licenseKey.getEnterpriseSettings.invalidate();
-													await utils.licenseKey.haveValidLicenseKey.invalidate();
-													toast.success("License key activated");
-												} catch (error) {
-													console.error(error);
-													toast.error(
-														error instanceof Error
-															? error.message
-															: "Failed to activate license key",
-													);
-												}
-											}}
-										>
-											Activate
-										</Button>
-									)}
-								</div>
-							</div>
-						</>
-					) : (
-						<div className="flex flex-col items-center gap-4 justify-center min-h-[30vh] text-center">
-							<div className="flex flex-col items-center gap-2 max-w-[400px]">
-								<div className="rounded-full bg-muted p-4">
-									<ShieldCheck className="size-8 text-muted-foreground" />
-								</div>
-								<div className="space-y-1">
-									<h3 className="text-lg font-semibold">Enterprise Features</h3>
-									<p className="text-sm text-muted-foreground">
-										Unlock advanced capabilities like SSO, Audit logs,
-										whitelabeling and more.
-									</p>
-								</div>
-							</div>
+				</div>
 
-							<Button
-								onClick={async () => {
-									try {
-										await updateEnterpriseSettings({
-											enableEnterpriseFeatures: true,
-										});
-										await utils.licenseKey.getEnterpriseSettings.invalidate();
-										toast.success("Enterprise features enabled");
-									} catch (error) {
-										console.error(error);
-										toast.error("Failed to enable enterprise features");
-									}
-								}}
-								isLoading={isSaving}
-								disabled={isPending || isDeactivating}
-							>
-								Enable Enterprise Features
-							</Button>
-						</div>
-					)}
-				</>
-			)}
+				<div className="grid grid-cols-2 gap-4 w-full max-w-[400px] py-4">
+				    <div className="flex flex-col items-center gap-1 p-3 rounded-lg border bg-card">
+				        <div className="text-xs font-bold text-primary">SSO</div>
+				        <div className="text-[10px] text-muted-foreground">Single Sign-On</div>
+				    </div>
+				    <div className="flex flex-col items-center gap-1 p-3 rounded-lg border bg-card">
+				        <div className="text-xs font-bold text-primary">Branding</div>
+				        <div className="text-[10px] text-muted-foreground">Whitelabeling</div>
+				    </div>
+				</div>
+
+				<Button asChild className="w-full max-w-[280px]" size="lg">
+					<Link href="/">Activate Subscription</Link>
+				</Button>
+				
+				<p className="text-xs text-muted-foreground">
+					Need help? Contact <Link href="mailto:support@dpinfosystem.in" className="underline underline-offset-4">Support</Link>
+				</p>
+			</div>
 		</div>
 	);
 }

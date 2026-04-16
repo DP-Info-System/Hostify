@@ -101,10 +101,10 @@ export const WelcomeSubscription = () => {
 
 				<DialogHeader>
 					<DialogTitle className="text-2xl text-center">
-						Welcome To Dokploy Cloud 🎉
+						Welcome To Hostify Cloud 🎉
 					</DialogTitle>
 					<DialogDescription className="text-center max-w-xl mx-auto">
-						Thank you for choosing Dokploy Cloud! 🚀 We're excited to have you
+						Thank you for choosing Hostify Cloud! 🚀 We're excited to have you
 						onboard. Before you dive in, you'll need to configure your remote
 						server to unlock all the features we offer.
 					</DialogDescription>
@@ -202,7 +202,7 @@ export const WelcomeSubscription = () => {
 											</li>
 											<li>
 												<a
-													href=" https://app.americancloud.com/register?ref=dokploy"
+													href=" https://app.americancloud.com/register?ref=hostify"
 													className="text-link underline"
 												>
 													American Cloud - Get $20 Credits
@@ -317,7 +317,7 @@ export const WelcomeSubscription = () => {
 												that your server can handle?
 											</p>
 											<p className="text-muted-foreground">
-												Here are some of the things you can do with Dokploy
+												Here are some of the things you can do with Hostify
 												Cloud:
 											</p>
 										</div>
@@ -350,7 +350,7 @@ export const WelcomeSubscription = () => {
 												<Button className="rounded-full bg-[#5965F2] hover:bg-[#4A55E0] w-fit">
 													<Link
 														href="https://discord.gg/2tBnJ3jDJc"
-														aria-label="Dokploy on GitHub"
+														aria-label="Hostify on GitHub"
 														target="_blank"
 														className="flex flex-row items-center gap-2 text-white"
 													>
@@ -367,8 +367,8 @@ export const WelcomeSubscription = () => {
 												</Button>
 												<Button className="rounded-full  w-fit">
 													<Link
-														href="https://github.com/Dokploy/dokploy"
-														aria-label="Dokploy on GitHub"
+														href="https://github.com/hostify/hostify"
+														aria-label="Hostify on GitHub"
 														target="_blank"
 														className="flex flex-row items-center gap-2 "
 													>
@@ -382,8 +382,8 @@ export const WelcomeSubscription = () => {
 													variant="outline"
 												>
 													<Link
-														href="https://docs.dokploy.com/docs/core"
-														aria-label="Dokploy Docs"
+														href="https://docs.hostify.com/docs/core"
+														aria-label="Hostify Docs"
 														target="_blank"
 														className="flex flex-row items-center gap-2 "
 													>

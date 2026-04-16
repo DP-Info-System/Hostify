@@ -2,6 +2,8 @@ import { api } from "@/utils/api";
 import { ImpersonationBar } from "../dashboard/impersonation/impersonation-bar";
 import { HubSpotWidget } from "../shared/HubSpotWidget";
 import Page from "./side";
+import { LicenseProvider } from "../shared/license-provider";
+import { LicenseModal } from "../shared/license-modal";
 
 interface Props {
 	children: React.ReactNode;
@@ -21,8 +23,9 @@ export const DashboardLayout = ({ children }: Props) => {
 	const isChatEnabled = isCloud === true && currentPlan === "startup";
 
 	return (
-		<>
+		<LicenseProvider>
 			<Page>{children}</Page>
+			<LicenseModal />
 			{isChatEnabled && (
 				<>
 					<HubSpotWidget />
@@ -30,6 +33,6 @@ export const DashboardLayout = ({ children }: Props) => {
 			)}
 
 			{haveRootAccess === true && <ImpersonationBar />}
-		</>
+		</LicenseProvider>
 	);
 };

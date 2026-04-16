@@ -144,7 +144,7 @@ export const ValidateServer = ({ serverId }: Props) => {
 													}
 												/>
 												<StatusRow
-													label="Dokploy Network Created"
+													label="Hostify Network Created"
 													isEnabled={data?.isDokployNetworkInstalled}
 													description={
 														data?.isDokployNetworkInstalled
@@ -178,12 +178,12 @@ export const ValidateServer = ({ serverId }: Props) => {
 											}
 										/>
 										<StatusRow
-											label="Docker Group"
+											label="Hostify Group"
 											isEnabled={data?.dockerGroupMember}
 											description={
 												data?.dockerGroupMember
-													? "User is in docker group"
-													: "User is not in docker group"
+													? "User is in Hostify group"
+													: "User is not in Hostify group"
 											}
 										/>
 									</div>

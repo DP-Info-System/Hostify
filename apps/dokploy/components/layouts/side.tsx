@@ -84,6 +84,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
+import { useLicense } from "../shared/license-provider";
 import { AddOrganization } from "../dashboard/organization/handle-organization";
 import { DialogAction } from "../shared/dialog-action";
 import { Logo } from "../shared/logo";
@@ -396,36 +397,9 @@ const MENU: Menu = {
 			// Only enabled for owners
 			isEnabled: ({ auth }) => !!(auth?.role === "owner"),
 		},
-		{
-			isSingle: true,
-			title: "SSO",
-			url: "/dashboard/settings/sso",
-			icon: LogIn,
-			// Enabled for admins in both cloud and self-hosted (enterprise)
-			isEnabled: ({ permissions }) => !!permissions?.organization.update,
-		},
-		{
-			isSingle: true,
-			title: "Whitelabeling",
-			url: "/dashboard/settings/whitelabeling",
-			icon: Palette,
-			// Only enabled for owners in non-cloud environments (enterprise)
-			isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && !isCloud),
-		},
 	],
 
-	help: [
-		{
-			name: "Documentation",
-			url: "https://docs.dokploy.com/docs/core",
-			icon: BookIcon,
-		},
-		{
-			name: "Support",
-			url: "https://discord.gg/2tBnJ3jDJc",
-			icon: CircleHelp,
-		},
-	],
+	help: [],
 } as const;
 
 /**
@@ -862,6 +836,7 @@ function SidebarLogo() {
 }
 
 export default function Page({ children }: Props) {
+	const { isLicenseActive, isLoading: isLicenseLoading } = useLicense();
 	const [defaultOpen, setDefaultOpen] = useState<boolean | undefined>(
 		undefined,
 	);
@@ -935,7 +910,7 @@ export default function Page({ children }: Props) {
 					<LogoWrapper />
 					{/* </SidebarMenuButton> */}
 				</SidebarHeader>
-				<SidebarContent>
+				<SidebarContent className={cn(!isLicenseActive && !isLicenseLoading && "pointer-events-none opacity-50")}>
 					<SidebarGroup>
 						<SidebarGroupLabel>Home</SidebarGroupLabel>
 						<SidebarMenu>
@@ -1154,7 +1129,7 @@ export default function Page({ children }: Props) {
 						)}
 						{dokployVersion && (
 							<div className="px-3 text-xs text-muted-foreground text-center group-data-[collapsible=icon]:hidden">
-								Version {dokployVersion}
+								Hostify Version {dokployVersion}
 							</div>
 						)}
 					</SidebarMenu>

@@ -91,6 +91,7 @@ export const whitelabelingRouter = createTRPCRouter({
 		if (!config) return null;
 
 		return {
+			id: settings.id,
 			appName: config.appName,
 			appDescription: config.appDescription,
 			logoUrl: config.logoUrl,

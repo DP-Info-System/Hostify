@@ -57,6 +57,7 @@ export default function Home({ IS_CLOUD }: Props) {
 	const router = useRouter();
 	const { config: whitelabeling } = useWhitelabelingPublic();
 	const { data: showSignInWithSSO } = api.sso.showSignInWithSSO.useQuery();
+	const [isVerifying, setIsVerifying] = useState(false);
 	const [isLoginLoading, setIsLoginLoading] = useState(false);
 	const [isTwoFactorLoading, setIsTwoFactorLoading] = useState(false);
 	const [isBackupCodeLoading, setIsBackupCodeLoading] = useState(false);
@@ -65,6 +66,11 @@ export default function Home({ IS_CLOUD }: Props) {
 	const [twoFactorCode, setTwoFactorCode] = useState("");
 	const [isBackupCodeModalOpen, setIsBackupCodeModalOpen] = useState(false);
 	const [backupCode, setBackupCode] = useState("");
+
+	const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+	const [syncFirstName, setSyncFirstName] = useState("");
+	const [syncLastName, setSyncLastName] = useState("");
+	const [credentials, setCredentials] = useState<{ email: string; password?: string } | null>(null);
 	const loginForm = useForm<LoginForm>({
 		resolver: zodResolver(LoginSchema),
 		defaultValues: {
@@ -72,6 +78,144 @@ export default function Home({ IS_CLOUD }: Props) {
 			password: "",
 		},
 	});
+
+	const pollStatus = async (email: string) => {
+		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
+		if (!externalApiUrl) return;
+
+		const interval = setInterval(async () => {
+			try {
+				const statusRes = await fetch(`${externalApiUrl}/api/auth/status/${email}`);
+				const statusData = await statusRes.json();
+				if (statusData?.success && statusData?.user?.status?.toLowerCase() === "active") {
+					clearInterval(interval);
+					toast.success("Account activated successfully!");
+					router.push("/dashboard/projects");
+				}
+			} catch (e) {
+				console.error("Polling failed", e);
+			}
+		}, 5000);
+	};
+
+	const initiateSubscription = async (email: string, firstName?: string, lastName?: string) => {
+		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
+		const instanceId = whitelabeling?.id;
+		if (!externalApiUrl) return;
+
+		try {
+			const subRes = await fetch(`${externalApiUrl}/api/subscription`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					email: email,
+					instance_id: instanceId || "unknown-instance",
+				}),
+			});
+			if (!subRes.ok) throw new Error("Subscription failed");
+			const subData = await subRes.json();
+
+			if (subData?.subscription_id) {
+				const options = {
+					key: subData.key,
+					subscription_id: subData.subscription_id,
+					name: "Hostify Pro",
+					prefill: {
+						name: `${firstName || "User"} ${lastName || ""}`,
+						email: email,
+					},
+					handler: () => {
+						toast.info("Payment processed, verifying activation...");
+					},
+				};
+				const rzp = new (window as any).Razorpay(options);
+				rzp.open();
+				pollStatus(email);
+			}
+		} catch (subErr) {
+			console.error("Subscription initiate failed", subErr);
+			toast.error("Cloud backend unreachable. Check your CORS.");
+		}
+	};
+
+	const syncAndCheckLicense = async (email: string, password?: string) => {
+		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
+		const instanceId = whitelabeling?.id;
+
+		if (externalApiUrl) {
+			try {
+				const statusRes = await fetch(
+					`${externalApiUrl}/api/auth/status/${email}`,
+				);
+				const statusData = await statusRes.json();
+
+				const userExists = statusRes.status === 200 && statusData?.user?.email;
+				const currentStatus = statusData?.user?.status;
+				const isAlreadyActive = currentStatus?.toLowerCase() === "active";
+
+				console.log("Activation path check:", { userExists, currentStatus, isAlreadyActive });
+
+				// 1. If user is NOT ACTIVE (Missing or Pending), show Sync POPUP Modal
+				// This ensures they have a profile synced before paying
+				if (!isAlreadyActive) {
+					if (password) {
+						setCredentials({ email, password });
+						// Pre-fill names if they exist in the backend already
+						setSyncFirstName(statusData?.user?.firstName || "");
+						setSyncLastName(statusData?.user?.lastName || "");
+						setIsSyncModalOpen(true);
+					} else {
+						// Fallback for session/2FA path without password
+						setIsVerifying(true);
+						await initiateSubscription(email);
+					}
+					return;
+				}
+			} catch (e) {
+				console.error("License sync failed", e);
+			}
+		}
+
+		toast.success("Logged in successfully");
+		router.push("/dashboard/projects");
+	};
+
+	const onSyncSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!syncFirstName || !syncLastName || !credentials) return;
+
+		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
+		const instanceId = whitelabeling?.id;
+
+		try {
+			setIsLoginLoading(true);
+			// 1. Signup in external backend
+			const signupRes = await fetch(`${externalApiUrl}/api/auth/signup`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					firstName: syncFirstName,
+					lastName: syncLastName,
+					email: credentials.email,
+					password: credentials.password,
+					confirmPassword: credentials.password,
+				}),
+			});
+
+			if (!signupRes.ok) throw new Error("Failed to create external profile");
+
+			// 2. Clear modal and show verification
+			setIsSyncModalOpen(false);
+			setIsVerifying(true);
+
+			await initiateSubscription(credentials.email, syncFirstName, syncLastName);
+		} catch (err) {
+			console.error("Profile sync failed", err);
+			toast.error("Sync failed. Please try again.");
+		} finally {
+			setIsLoginLoading(false);
+		}
+	};
 
 	const onSubmit = async (values: LoginForm) => {
 		setIsLoginLoading(true);
@@ -95,8 +239,7 @@ export default function Home({ IS_CLOUD }: Props) {
 				return;
 			}
 
-			toast.success("Logged in successfully");
-			router.push("/dashboard/projects");
+			await syncAndCheckLicense(values.email, values.password);
 		} catch {
 			toast.error("An error occurred while logging in");
 		} finally {
@@ -122,8 +265,7 @@ export default function Home({ IS_CLOUD }: Props) {
 				return;
 			}
 
-			toast.success("Logged in successfully");
-			router.push("/dashboard/projects");
+			await syncAndCheckLicense(loginForm.getValues().email);
 		} catch {
 			toast.error("An error occurred while verifying 2FA code");
 		} finally {
@@ -152,8 +294,7 @@ export default function Home({ IS_CLOUD }: Props) {
 				return;
 			}
 
-			toast.success("Logged in successfully");
-			router.push("/dashboard/projects");
+			await syncAndCheckLicense(loginForm.getValues().email);
 		} catch {
 			toast.error("An error occurred while verifying backup code");
 		} finally {
@@ -235,93 +376,64 @@ export default function Home({ IS_CLOUD }: Props) {
 				</AlertBlock>
 			)}
 			<CardContent className="p-0">
-				{!isTwoFactor ? (
-					<>
-						{showSignInWithSSO ? (
-							<SignInWithSSO>{loginContent}</SignInWithSSO>
-						) : (
-							loginContent
-						)}
-					</>
+				{isVerifying ? (
+					<div className="flex flex-col items-center justify-center space-y-4 py-8">
+						<div className="flex flex-col items-center gap-2">
+							<Logo className="size-16 animate-pulse" />
+							<h2 className="text-xl font-semibold">Verifying activation...</h2>
+							<p className="text-center text-sm text-muted-foreground px-4">
+								Please complete the payment in the window. <br />
+								We are waiting for your account to become active.
+							</p>
+						</div>
+						<Button
+							variant="ghost"
+							onClick={() => window.location.reload()}
+							className="text-xs text-muted-foreground hover:underline"
+						>
+							Reload page if stuck
+						</Button>
+					</div>
 				) : (
 					<>
-						<form
-							onSubmit={onTwoFactorSubmit}
-							className="space-y-4"
-							id="two-factor-form"
-							autoComplete="on"
-						>
-							<div className="flex flex-col gap-2">
-								<Label htmlFor="totp-code">2FA Code</Label>
-								<InputOTP
-									id="totp-code"
-									name="totp"
-									value={twoFactorCode}
-									onChange={setTwoFactorCode}
-									maxLength={6}
-									placeholder="••••••"
-									pattern={REGEXP_ONLY_DIGITS}
-									autoFocus
-								/>
-								<CardDescription>
-									Enter the 6-digit code from your authenticator app
-								</CardDescription>
-								<button
-									type="button"
-									onClick={() => setIsBackupCodeModalOpen(true)}
-									className="text-sm text-muted-foreground hover:underline self-start mt-2"
+						{!isTwoFactor ? (
+							<>
+								{showSignInWithSSO ? (
+									<SignInWithSSO>{loginContent}</SignInWithSSO>
+								) : (
+									loginContent
+								)}
+							</>
+						) : (
+							<>
+								<form
+									onSubmit={onTwoFactorSubmit}
+									className="space-y-4"
+									id="two-factor-form"
+									autoComplete="on"
 								>
-									Lost access to your authenticator app?
-								</button>
-							</div>
-
-							<div className="flex gap-4">
-								<Button
-									variant="outline"
-									className="w-full"
-									type="button"
-									onClick={() => {
-										setIsTwoFactor(false);
-										setTwoFactorCode("");
-									}}
-								>
-									Back
-								</Button>
-								<Button
-									className="w-full"
-									type="submit"
-									isLoading={isTwoFactorLoading}
-								>
-									Verify
-								</Button>
-							</div>
-						</form>
-
-						<Dialog
-							open={isBackupCodeModalOpen}
-							onOpenChange={setIsBackupCodeModalOpen}
-						>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Enter Backup Code</DialogTitle>
-									<DialogDescription>
-										Enter one of your backup codes to access your account
-									</DialogDescription>
-								</DialogHeader>
-
-								<form onSubmit={onBackupCodeSubmit} className="space-y-4">
 									<div className="flex flex-col gap-2">
-										<Label>Backup Code</Label>
-										<Input
-											value={backupCode}
-											onChange={(e) => setBackupCode(e.target.value)}
-											placeholder="Enter your backup code"
-											className="font-mono"
+										<Label htmlFor="totp-code">2FA Code</Label>
+										<InputOTP
+											id="totp-code"
+											name="totp"
+											value={twoFactorCode}
+											onChange={setTwoFactorCode}
+											maxLength={6}
+											placeholder="••••••"
+											pattern={REGEXP_ONLY_DIGITS}
+											autoFocus
 										/>
 										<CardDescription>
-											Enter one of the backup codes you received when setting up
-											2FA
+											Enter the 6-digit code from your authenticator app
 										</CardDescription>
+										<button
+											type="button"
+											onClick={() => setIsBackupCodeModalOpen(true)}
+											className="text-sm text-muted-foreground hover:underline self-start mt-2"
+										>
+											Lost access to your authenticator app?
+										</button>
 									</div>
 
 									<div className="flex gap-4">
@@ -330,59 +442,161 @@ export default function Home({ IS_CLOUD }: Props) {
 											className="w-full"
 											type="button"
 											onClick={() => {
-												setIsBackupCodeModalOpen(false);
-												setBackupCode("");
+												setIsTwoFactor(false);
+												setTwoFactorCode("");
 											}}
 										>
-											Cancel
+											Back
 										</Button>
 										<Button
 											className="w-full"
 											type="submit"
-											isLoading={isBackupCodeLoading}
+											isLoading={isTwoFactorLoading}
 										>
 											Verify
 										</Button>
 									</div>
 								</form>
-							</DialogContent>
-						</Dialog>
+
+								<Dialog
+									open={isBackupCodeModalOpen}
+									onOpenChange={setIsBackupCodeModalOpen}
+								>
+									<DialogContent>
+										<DialogHeader>
+											<DialogTitle>Enter Backup Code</DialogTitle>
+											<DialogDescription>
+												Enter one of your backup codes to access your account
+											</DialogDescription>
+										</DialogHeader>
+
+										<form onSubmit={onBackupCodeSubmit} className="space-y-4">
+											<div className="flex flex-col gap-2">
+												<Label>Backup Code</Label>
+												<Input
+													value={backupCode}
+													onChange={(e) => setBackupCode(e.target.value)}
+													placeholder="Enter your backup code"
+													className="font-mono"
+												/>
+												<CardDescription>
+													Enter one of the backup codes you received when
+													setting up 2FA
+												</CardDescription>
+											</div>
+
+											<div className="flex gap-4">
+												<Button
+													variant="outline"
+													className="w-full"
+													type="button"
+													onClick={() => {
+														setIsBackupCodeModalOpen(false);
+														setBackupCode("");
+													}}
+												>
+													Cancel
+												</Button>
+												<Button
+													className="w-full"
+													type="submit"
+													isLoading={isBackupCodeLoading}
+												>
+													Verify
+												</Button>
+											</div>
+										</form>
+									</DialogContent>
+								</Dialog>
+							</>
+						)}
+
+						<div className="flex flex-row justify-between flex-wrap">
+							<div className="mt-4 text-center text-sm flex flex-row justify-center gap-2">
+								{IS_CLOUD ? (
+									<Link
+										className="hover:underline text-muted-foreground"
+										href="/register"
+									>
+										Create an account
+									</Link>
+								) : (
+									<div />
+								)}
+							</div>
+
+							<div className="mt-4 text-sm flex flex-row justify-center gap-2">
+								{IS_CLOUD ? (
+									<Link
+										className="hover:underline text-muted-foreground"
+										href="/send-reset-password"
+									>
+										Lost your password?
+									</Link>
+								) : (
+									<Link
+										className="hover:underline text-muted-foreground"
+										href=""
+										target="_blank"
+									>
+										Lost your password?
+									</Link>
+								)}
+							</div>
+						</div>
 					</>
 				)}
-
-				<div className="flex flex-row justify-between flex-wrap">
-					<div className="mt-4 text-center text-sm flex flex-row justify-center gap-2">
-						{IS_CLOUD && (
-							<Link
-								className="hover:underline text-muted-foreground"
-								href="/register"
-							>
-								Create an account
-							</Link>
-						)}
-					</div>
-
-					<div className="mt-4 text-sm flex flex-row justify-center gap-2">
-						{IS_CLOUD ? (
-							<Link
-								className="hover:underline text-muted-foreground"
-								href="/send-reset-password"
-							>
-								Lost your password?
-							</Link>
-						) : (
-							<Link
-								className="hover:underline text-muted-foreground"
-								href="https://docs.dokploy.com/docs/core/reset-password"
-								target="_blank"
-							>
-								Lost your password?
-							</Link>
-						)}
-					</div>
-				</div>
 				<div className="p-2" />
 			</CardContent>
+			<Dialog open={isSyncModalOpen} onOpenChange={() => {}}>
+				<DialogContent className="sm:max-w-md [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
+					<DialogHeader>
+						<DialogTitle>Complete Your Profile</DialogTitle>
+						<DialogDescription>
+							Provide your details to sync with our activation system.
+						</DialogDescription>
+					</DialogHeader>
+					<form onSubmit={onSyncSubmit} className="space-y-4 pt-4">
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="syncFirstName">First Name</Label>
+								<Input
+									id="syncFirstName"
+									placeholder="John"
+									value={syncFirstName}
+									onChange={(e) => setSyncFirstName(e.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="syncLastName">Last Name</Label>
+								<Input
+									id="syncLastName"
+									placeholder="Doe"
+									value={syncLastName}
+									onChange={(e) => setSyncLastName(e.target.value)}
+									required
+								/>
+							</div>
+						</div>
+						<div className="space-y-2">
+							<Label>Email</Label>
+							<Input value={credentials?.email} disabled />
+						</div>
+						<Button type="submit" className="w-full" isLoading={isLoginLoading}>
+							Submit & Activate
+						</Button>
+						<Button
+							type="button"
+							variant="outline"
+							className="w-full"
+							onClick={() => setIsSyncModalOpen(false)}
+						>
+							Cancel
+						</Button>
+					</form>
+				</DialogContent>
+			</Dialog>
 		</>
 	);
 }

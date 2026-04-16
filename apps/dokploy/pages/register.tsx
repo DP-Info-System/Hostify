@@ -81,6 +81,7 @@ const Register = ({ isCloud }: Props) => {
 	const { config: whitelabeling } = useWhitelabelingPublic();
 	const [isError, setIsError] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [isVerifying, setIsVerifying] = useState(false);
 	const [data, setData] = useState<any>(null);
 
 	const form = useForm<Register>({
@@ -98,8 +99,108 @@ const Register = ({ isCloud }: Props) => {
 		form.reset();
 	}, [form, form.reset, form.formState.isSubmitSuccessful]);
 
+	const pollStatus = async (email: string) => {
+		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
+		if (!externalApiUrl) return;
+
+		const interval = setInterval(async () => {
+			try {
+				const statusRes = await fetch(`${externalApiUrl}/api/auth/status/${email}`);
+				const statusData = await statusRes.json();
+				if (statusData?.success && statusData?.user?.status?.toLowerCase() === "active") {
+					clearInterval(interval);
+					toast.success("Account activated successfully!");
+					router.push("/dashboard/projects");
+				}
+			} catch (e) {
+				console.error("Polling failed", e);
+			}
+		}, 5000);
+	};
+
+	const syncAndCheckLicense = async (values: Register) => {
+		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
+		const instanceId = whitelabeling?.id;
+
+		if (externalApiUrl) {
+			try {
+				// 1. Check current status
+				const statusRes = await fetch(
+					`${externalApiUrl}/api/auth/status/${values.email}`,
+				);
+				const statusData = await statusRes.json();
+
+				const userExists = statusRes.ok && statusData?.success;
+				const currentStatus = statusData?.user?.status;
+				const isAlreadyActive = currentStatus?.toLowerCase() === "active";
+
+				// 2. Register if user is totally missing
+				if (!userExists) {
+					await fetch(`${externalApiUrl}/api/auth/signup`, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							firstName: values.name,
+							lastName: values.lastName,
+							email: values.email,
+							password: values.password,
+							confirmPassword: values.confirmPassword,
+						}),
+					});
+				}
+
+				if (currentStatus?.toLowerCase() !== "active") {
+					setIsVerifying(true);
+					try {
+						const subRes = await fetch(`${externalApiUrl}/api/subscription`, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								email: values.email,
+								instance_id: instanceId || "unknown-instance",
+							}),
+						});
+						if (!subRes.ok) throw new Error("Subscription initiation failed");
+						const subData = await subRes.json();
+
+						if (subData?.subscription_id) {
+							const options = {
+								key: subData.key,
+								subscription_id: subData.subscription_id,
+								name: "Hostify Pro",
+								handler: () => {
+									toast.info("Payment processed, verifying activation...");
+								},
+							};
+							const rzp = new (window as any).Razorpay(options);
+							rzp.open();
+							pollStatus(values.email);
+							return; // Block redirect
+						}
+					} catch (subErr) {
+						console.error("Subscription initiate failed", subErr);
+						toast.error("Cloud backend is currently unreachable. Please try again later.");
+						return;
+					}
+				}
+			} catch (e) {
+				console.error("License sync failed", e);
+				toast.error("Internal verification error. Please contact support.");
+				return; // Block redirect on error
+			}
+		}
+
+		toast.success("User registered successfully");
+		if (!isCloud) {
+			router.push("/");
+		} else {
+			// This branch is for cloud users which we didn't touch
+			console.log("Cloud redirect");
+		}
+	};
+
 	const onSubmit = async (values: Register) => {
-		const { data, error } = await authClient.signUp.email({
+		const { error } = await authClient.signUp.email({
 			email: values.email,
 			password: values.password,
 			name: values.name,
@@ -110,14 +211,7 @@ const Register = ({ isCloud }: Props) => {
 			setIsError(true);
 			setError(error.message || "An error occurred");
 		} else {
-			toast.success("User registered successfully", {
-				duration: 2000,
-			});
-			if (!isCloud) {
-				router.push("/");
-			} else {
-				setData(data);
-			}
+			await syncAndCheckLicense(values);
 		}
 	};
 	return (
@@ -159,108 +253,133 @@ const Register = ({ isCloud }: Props) => {
 							</AlertBlock>
 						)}
 						<CardContent className="p-0">
-							{isCloud && (
-								<div className="flex flex-col">
-									<SignInWithGithub />
-									<SignInWithGoogle />
-								</div>
-							)}
-							{isCloud && (
-								<p className="mb-4 text-center text-xs text-muted-foreground">
-									Or register with email
-								</p>
-							)}
-							<Form {...form}>
-								<form
-									onSubmit={form.handleSubmit(onSubmit)}
-									className="grid gap-4"
-								>
-									<div className="space-y-4">
-										<FormField
-											control={form.control}
-											name="name"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>First Name</FormLabel>
-													<FormControl>
-														<Input placeholder="John" {...field} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<FormField
-											control={form.control}
-											name="lastName"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Last Name</FormLabel>
-													<FormControl>
-														<Input placeholder="Doe" {...field} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<FormField
-											control={form.control}
-											name="email"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Email</FormLabel>
-													<FormControl>
-														<Input placeholder="email@dokploy.com" {...field} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<FormField
-											control={form.control}
-											name="password"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Password</FormLabel>
-													<FormControl>
-														<Input
-															type="password"
-															placeholder="Password"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name="confirmPassword"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Confirm Password</FormLabel>
-													<FormControl>
-														<Input
-															type="password"
-															placeholder="Password"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<Button
-											type="submit"
-											isLoading={form.formState.isSubmitting}
-											className="w-full"
-										>
-											Register
-										</Button>
+							{isVerifying ? (
+								<div className="flex flex-col items-center justify-center space-y-4 py-8">
+									<div className="flex flex-col items-center gap-2">
+										<Logo className="size-16 animate-pulse" />
+										<h2 className="text-xl font-semibold">Verifying activation...</h2>
+										<p className="text-center text-sm text-muted-foreground px-4">
+											Please complete the payment in the window. <br />
+											We are waiting for your account to become active.
+										</p>
 									</div>
-								</form>
-							</Form>
+									<Button
+										variant="ghost"
+										onClick={() => window.location.reload()}
+										className="text-xs text-muted-foreground hover:underline"
+									>
+										Reload page if stuck
+									</Button>
+								</div>
+							) : (
+								<>
+									{isCloud && (
+										<div className="flex flex-col">
+											<SignInWithGithub />
+											<SignInWithGoogle />
+										</div>
+									)}
+									{isCloud && (
+										<p className="mb-4 text-center text-xs text-muted-foreground">
+											Or register with email
+										</p>
+									)}
+									<Form {...form}>
+										<form
+											onSubmit={form.handleSubmit(onSubmit)}
+											className="grid gap-4"
+										>
+											<div className="space-y-4">
+												<FormField
+													control={form.control}
+													name="name"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>First Name</FormLabel>
+															<FormControl>
+																<Input placeholder="John" {...field} />
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name="lastName"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Last Name</FormLabel>
+															<FormControl>
+																<Input placeholder="Doe" {...field} />
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name="email"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Email</FormLabel>
+															<FormControl>
+																<Input
+																	placeholder="email@hostify.com"
+																	{...field}
+																/>
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name="password"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Password</FormLabel>
+															<FormControl>
+																<Input
+																	type="password"
+																	placeholder="Password"
+																	{...field}
+																/>
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+
+												<FormField
+													control={form.control}
+													name="confirmPassword"
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Confirm Password</FormLabel>
+															<FormControl>
+																<Input
+																	type="password"
+																	placeholder="Password"
+																	{...field}
+																/>
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+
+												<Button
+													type="submit"
+													isLoading={form.formState.isSubmitting}
+													className="w-full"
+												>
+													Register
+												</Button>
+											</div>
+										</form>
+									</Form>
+								</>
+							)}
 							<div className="flex flex-row justify-between flex-wrap">
 								{isCloud && (
 									<div className="mt-4 text-center text-sm flex gap-2 text-muted-foreground">
@@ -275,10 +394,10 @@ const Register = ({ isCloud }: Props) => {
 									Need help?
 									<Link
 										className="underline"
-										href="https://dokploy.com"
+										href="https://hostify.com"
 										target="_blank"
 									>
-										Contact us
+										Contact Hostify
 									</Link>
 								</div>
 							</div>
