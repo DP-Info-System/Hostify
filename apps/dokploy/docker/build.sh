@@ -12,6 +12,7 @@ fi
 
 BUILDER=$(docker buildx create --use)
 
-docker buildx build --platform linux/amd64,linux/arm64 --pull --rm -t "dokploy/dokploy:${TAG}" -f 'Dockerfile' .
+# Build only for x86_64 (amd64) for faster deployment on VPS
+docker buildx build --platform linux/amd64 --pull --rm -t "dokploy/dokploy:${TAG}" -f 'Dockerfile' .
 
 docker buildx rm $BUILDER
