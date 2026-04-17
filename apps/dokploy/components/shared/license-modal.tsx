@@ -9,7 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/router";
 
 export const LicenseModal = () => {
-	const { isLicenseActive, isLoading, email, checkLicense } = useLicense();
+	const { isLicenseActive, isLoading, email, checkLicense, saveLicense } = useLicense();
 	const { config: whitelabeling } = useWhitelabelingPublic();
 	const [isVerifying, setIsVerifying] = useState(false);
 	const [isOpen, setIsOpen] = useState(false);
@@ -97,6 +97,8 @@ export const LicenseModal = () => {
 							const statusData = await statusRes.json();
 							if (statusData?.status?.toLowerCase() === "active") {
 								clearInterval(interval);
+								// Save license data to local database
+								await saveLicense(subData.license_key || subData.key, subData.subscription_id);
 								await checkLicense();
 								setIsVerifying(false);
 								toast.success("Account activated! Welcome back.");

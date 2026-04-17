@@ -18,6 +18,7 @@ interface LicenseContextType {
 	isLoading: boolean;
 	email: string | undefined;
 	checkLicense: () => Promise<void>;
+	saveLicense: (licenseKey: string, subscriptionId?: string) => Promise<void>;
 }
 
 const LicenseContext = createContext<LicenseContextType | undefined>(undefined);
@@ -27,9 +28,39 @@ export const LicenseProvider = ({ children }: { children: React.ReactNode }) => 
 	const [isLoading, setIsLoading] = useState(true);
 	const { data: userMember } = api.user.get.useQuery();
 	const email = userMember?.user?.email;
+	const hasLocalLicense = userMember?.user?.licenseKey;
+
+	const saveLicense = useCallback(async (licenseKey: string, subscriptionId?: string) => {
+		try {
+			const res = await fetch(`/api/payment/save-license`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ license_key: licenseKey, subscription_id: subscriptionId }),
+			});
+
+			if (!res.ok) {
+				console.warn("[License] Failed to save license to database");
+				return;
+			}
+
+			// Mark as active locally
+			setLicenseData({ status: "active", license_key: licenseKey });
+			console.log("[License] License saved to database");
+		} catch (error) {
+			console.error("[License] Error saving license", error);
+		}
+	}, []);
 
 	const checkLicense = useCallback(async () => {
 		if (!email) return;
+
+		// Check local database first
+		if (hasLocalLicense) {
+			console.log("[License] Using local license from database");
+			setLicenseData({ status: "active", license_key: hasLocalLicense });
+			setIsLoading(false);
+			return;
+		}
 
 		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
 		if (!externalApiUrl) {
@@ -39,6 +70,7 @@ export const LicenseProvider = ({ children }: { children: React.ReactNode }) => 
 		}
 
 		try {
+			console.log("[License] Checking status with external API");
 			const res = await fetch(`${externalApiUrl}/api/subscription/user-status/${email}`);
 			if (!res.ok) {
 				setLicenseData({ status: "inactive" });
@@ -48,10 +80,11 @@ export const LicenseProvider = ({ children }: { children: React.ReactNode }) => 
 			setLicenseData(data);
 		} catch (error) {
 			console.error("Failed to check license status", error);
+			setLicenseData({ status: "inactive" });
 		} finally {
 			setIsLoading(false);
 		}
-	}, [email]);
+	}, [email, hasLocalLicense]);
 
 	useEffect(() => {
 		if (email) {
@@ -66,7 +99,7 @@ export const LicenseProvider = ({ children }: { children: React.ReactNode }) => 
 	const isLicenseActive = licenseData?.status?.toLowerCase() === "active";
 
 	return (
-		<LicenseContext.Provider value={{ isLicenseActive, licenseData, isLoading, email, checkLicense }}>
+		<LicenseContext.Provider value={{ isLicenseActive, licenseData, isLoading, email, checkLicense, saveLicense }}>
 			{children}
 		</LicenseContext.Provider>
 	);
