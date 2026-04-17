@@ -48,14 +48,14 @@ jobs:
 
       - name: Prepare env file
         run: |
-          cp apps/dokploy/.env.production.example .env.production
-          cp apps/dokploy/.env.production.example apps/dokploy/.env.production
+          # Use the real .env.production file (committed to git) for the Docker build
+          cp .env.production apps/dokploy/.env.production
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
