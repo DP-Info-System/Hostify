@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { auth } from "@/server/auth";
-import { db } from "@/server/db";
-import { user as userTable } from "@/server/db/schema";
+import { auth, db } from "@dokploy/server";
+import { user as userTable } from "@dokploy/server/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function handler(
@@ -27,7 +26,7 @@ export default async function handler(
 			.set({
 				licenseKey: license_key,
 				isValidEnterpriseLicense: !!license_key,
-				updated_at: new Date(),
+				updatedAt: new Date(),
 			})
 			.where(eq(userTable.id, session.user.id))
 			.returning();
