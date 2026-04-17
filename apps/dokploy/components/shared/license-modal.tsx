@@ -36,19 +36,20 @@ export const LicenseModal = () => {
 	const handlePayment = async () => {
 		const externalApiUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_URL;
 
-		if (!externalApiUrl || !email) {
+		if (!email) {
 			toast.error("Configuration error. Please reload the page.");
 			return;
 		}
 
 		try {
-			console.log("[License] Starting payment POST request to:", `${externalApiUrl}/api/subscription`);
+			console.log("[License] Starting payment via server proxy");
 			setIsVerifying(true);
 			
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-			const subRes = await fetch(`${externalApiUrl}/api/subscription`, {
+			// Call local API endpoint (server-side proxy) instead of external API directly
+			const subRes = await fetch(`/api/payment/subscription`, {
 				method: "POST",
 				headers: { 
 					"Content-Type": "application/json",
@@ -91,7 +92,7 @@ export const LicenseModal = () => {
 				
 				const interval = setInterval(async () => {
 					try {
-						const statusRes = await fetch(`${externalApiUrl}/api/subscription/user-status/${email}`);
+						const statusRes = await fetch(`/api/payment/subscription-status?email=${encodeURIComponent(email)}`);
 						if (statusRes.ok) {
 							const statusData = await statusRes.json();
 							if (statusData?.status?.toLowerCase() === "active") {
