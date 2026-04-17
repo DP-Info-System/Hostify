@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { auth, db } from "@dokploy/server";
+import { validateRequest } from "@dokploy/server";
+import { db } from "@dokploy/server/db";
 import { user as userTable } from "@dokploy/server/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -13,8 +14,8 @@ export default async function handler(
 
 	try {
 		// Get user session
-		const session = await auth.api.getSession({ headers: req.headers });
-		if (!session?.user?.id) {
+		const { user, session } = await validateRequest(req);
+		if (!user?.id || !session) {
 			return res.status(401).json({ error: "Unauthorized" });
 		}
 
@@ -28,10 +29,10 @@ export default async function handler(
 				isValidEnterpriseLicense: !!license_key,
 				updatedAt: new Date(),
 			})
-			.where(eq(userTable.id, session.user.id))
+			.where(eq(userTable.id, user.id))
 			.returning();
 
-		console.log("[License] Saved license to database for user:", session.user.id);
+		console.log("[License] Saved license to database for user:", user.id);
 
 		return res.status(200).json({
 			success: true,
