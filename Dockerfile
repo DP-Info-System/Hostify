@@ -21,6 +21,9 @@ COPY packages/server/package.json ./packages/server/
 # Install dependencies (with pnpm cache mount)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
+# Copy environment file BEFORE build (needed for NEXT_PUBLIC_* variables)
+COPY .env.production ./
+
 # NOW copy the rest of the source code (excluding node_modules, .git, etc per .dockerignore)
 COPY . .
 
@@ -50,7 +53,7 @@ COPY --from=build /prod/dokploy/next.config.mjs ./next.config.mjs
 COPY --from=build /prod/dokploy/public ./public
 COPY --from=build /prod/dokploy/package.json ./package.json
 COPY --from=build /prod/dokploy/drizzle ./drizzle
-COPY .env.production ./.env
+COPY --from=build /usr/src/app/.env.production ./.env
 COPY --from=build /prod/dokploy/components.json ./components.json
 COPY --from=build /prod/dokploy/node_modules ./node_modules
 
