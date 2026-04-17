@@ -6,13 +6,23 @@ RUN corepack enable
 RUN corepack prepare pnpm@10.22.0 --activate
 
 FROM base AS build
-COPY . /usr/src/app
 WORKDIR /usr/src/app
 
 RUN apt-get update && apt-get install -y python3 make g++ git python3-pip pkg-config libsecret-1-dev && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Copy only package files first for dependency caching
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/dokploy/package.json ./apps/dokploy/
+COPY apps/api/package.json ./apps/api/
+COPY apps/monitoring/go.* ./apps/monitoring/
+COPY apps/schedules/package.json ./apps/schedules/
+COPY packages/server/package.json ./packages/server/
+
+# Install dependencies (with pnpm cache mount)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+# NOW copy the rest of the source code (excluding node_modules, .git, etc per .dockerignore)
+COPY . .
 
 # Deploy only the dokploy app
 
